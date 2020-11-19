@@ -1,0 +1,97 @@
+// This file is BASED ON part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: project05starter/Memory.hdl
+
+/**
+ * The complete address space of the Hack computer's memory,
+ * including RAM and memory-mapped I/O. 
+ * The chip facilitates read and write operations, as follows:
+ *     Read:  out(t) = Memory[address(t)](t)
+ *     Write: if load(t-1) then Memory[address(t-1)](t) = in(t-1)
+ * In words: the chip always outputs the value stored at the memory 
+ * location specified by address. If load==1, the in value is loaded 
+ * into the memory location specified by address. This value becomes 
+ * available through the out output from the next time step onward.
+ * Address space rules:
+ * Only the upper 16K+8K+1 words of the Memory chip are used. 
+ * Access to address>0x6000 is invalid. Access to any address in 
+ * the range 0x4000-0x5FFF results in accessing the screen memory 
+ * map. Access to address 0x6000 results in accessing the keyboard 
+ * memory map. The behavior in these addresses is described in the 
+ * Screen and Keyboard chip specifications given in the book.
+ */
+
+CHIP Memory {
+    IN in[8], load, address[15];
+    OUT out[8];
+
+    PARTS:
+    
+    DMux4Way(in=load, sel=address[13..14], a=loadRamA, b=loadRamB,c=loadToScreen,d=loadKbd);
+    Or(a=loadRamA, b=loadRamB, out=loadRAM);
+
+    RAM16K(in[0..7]=in, load=loadRAM, address=address[0..13], out[0..7]= outFromRAM);
+
+    Screen(
+      in[0]=in[0],
+      in[1]=in[0],
+      in[2]=in[1],
+      in[3]=in[1],
+      in[4]=in[2],
+      in[5]=in[2],
+      in[6]=in[3],
+      in[7]=in[3],
+      in[8]=in[4],
+      in[9]=in[4],
+      in[10]=in[5],
+      in[11]=in[5],
+      in[12]=in[6],
+      in[13]=in[6],
+      in[14]=in[7],
+      in[15]=in[7],
+      out[0]=outFromScreen0,
+      out[2]=outFromScreen1,
+      out[4]=outFromScreen2,
+      out[6]=outFromScreen3,
+      out[8]=outFromScreen4,
+      out[10]=outFromScreen5,
+      out[12]=outFromScreen6,
+      out[14]=outFromScreen7,
+      load=loadToScreen,
+      address=address[0..12]
+       ); // you'll have to define a source for loadToScreen
+
+
+       Keyboard(out[0..7]=outFromKeyboard);
+       And(a=true,b=address[14],out=useRAM);
+       And(a=true,b=address[13],out=useScreen);
+       And(a=true,b=address[12],out=useKeyboard);
+      
+
+    // Another hint from Stephen:
+    // It's neat to use a Mux with "one-hot encoding"
+    // to select the 'right' output of three:
+    // 001: use RAM
+    // 010: use screen
+    // 100: use keyboard
+    Mux4Way16(
+        a[0..7]=outFromRAM,
+        b[0..7]=outFromRAM,
+        c[0]=outFromScreen0,
+        c[1]=outFromScreen1,
+        c[2]=outFromScreen2,
+        c[3]=outFromScreen3,
+        c[4]=outFromScreen4,
+        c[5]=outFromScreen5,
+        c[6]=outFromScreen6,
+        c[7]=outFromScreen7,
+        d[0..7]=outFromKeyboard,
+        //sel[0]=useRAM,             // you'll have to define sources for these
+        //sel[1]=useScreen,
+        //sel[2]=useKeyboard,
+        sel = address[13..14],
+        out[0..7]=out
+    );
+    
+}
